@@ -34,6 +34,7 @@ unsafe impl Send for UsbTransfer {}
 struct TransferContext {
     sender: oneshot::Sender<Result<Vec<u8>, LibusbError>>,
     completed: Arc<AtomicBool>,
+    #[allow(dead_code)]
     buffer: Box<[u8]>,
 }
 
