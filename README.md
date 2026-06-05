@@ -8,9 +8,13 @@ Use this crate to add `wasi-usb` support to any Wasmtime embedder.
 
 Add the dependency to your `Cargo.toml`:
 
+```sh
+cargo add wasmtime-wasi-usb
+```
+
 ```toml
 [dependencies]
-wasmtime-wasi-usb = { git = "https://github.com/idlab-discover/wasmtime-wasi-usb", rev = "bc7c92d" }
+wasmtime-wasi-usb = "44.0.0" # specify desired version
 ```
 
 ### Integrating into a Wasmtime embedder
