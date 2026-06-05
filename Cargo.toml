@@ -5,6 +5,7 @@ version = "44.0.0"
 edition = "2024"
 authors = ["IDLab DISCOVER and contributors"]
 repository = "https://github.com/idlab-discover/wasmtime-wasi-usb"
+license = "MIT"
 
 [dependencies]
 wasmtime = "44.0.0"
