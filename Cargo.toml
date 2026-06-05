@@ -1,15 +1,15 @@
 [package]
 name = "wasmtime-wasi-usb"
 description = "Experimental USB library for WebAssembly in Wasmtime implementing wasi-usb"
-version = "44.0.0"
+version = "45.0.0"
 edition = "2024"
 authors = ["IDLab DISCOVER and contributors"]
 repository = "https://github.com/idlab-discover/wasmtime-wasi-usb"
 license = "MIT"
 
 [dependencies]
-wasmtime = "44.0.0"
-wasmtime-wasi = "44.0.0"
+wasmtime = "45.0.0"
+wasmtime-wasi = "45.0.0"
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
 libusb1-sys = "0.7.0"
 log = "0.4.31"
