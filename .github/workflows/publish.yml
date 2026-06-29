@@ -55,7 +55,7 @@ jobs:
 
       - name: Commit Major Bump
         if: steps.bump.outputs.should_commit == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: sync major version to ${{ env.VERSION }} to match wasmtime [skip ci]"
           commit_user_name: github-actions[bot]
