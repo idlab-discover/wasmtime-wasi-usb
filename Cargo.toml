@@ -1,7 +1,7 @@
 [package]
 name = "wasmtime-wasi-usb"
 description = "Experimental USB library for WebAssembly in Wasmtime implementing wasi-usb"
-version = "46.0.0"
+version = "46.0.1"
 edition = "2024"
 authors = ["IDLab DISCOVER and contributors"]
 repository = "https://github.com/idlab-discover/wasmtime-wasi-usb"
