@@ -2050,7 +2050,7 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-wasi-usb"
-version = "47.0.0"
+version = "48.0.0"
 dependencies = [
  "libc",
  "libusb1-sys",
