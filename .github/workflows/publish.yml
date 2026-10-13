@@ -1,78 +1,80 @@
-name: Sync Version and Publish
+name: Version and Publish
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., v49.0.2)"
+        required: true
+        type: string
 
 permissions:
-  contents: write # Required to push version bumps and tags
+  contents: write # Required to push version bumps, tags and create releases
   id-token: write # Required for crates.io Trusted Publishing (OIDC)
 
 jobs:
   publish:
-    name: Bump, Tag, and Publish
+    name: Bump, Tag, Publish, and Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
 
       - name: Install cargo-edit
-        uses: taiki-e/install-action@v2.87.27
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-edit
 
-      - name: Check and Bump Version
+      - name: Set Version
         id: bump
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
-          WASM_VERSION=$(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name=="wasmtime") | .version')
-          CRATE_VERSION=$(cargo read-manifest | jq -r .version)
-
-          WASM_MAJOR=$(echo "$WASM_VERSION" | cut -d. -f1)
-          CRATE_MAJOR=$(echo "$CRATE_VERSION" | cut -d. -f1)
-
-          if [ -z "$WASM_MAJOR" ] || [ -z "$CRATE_MAJOR" ]; then
-            echo "Error: Could not parse versions."
+          VERSION="${INPUT_VERSION#v}"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'; then
+            echo "Error: '$INPUT_VERSION' is not a valid semver version (expected e.g., v49.0.2)."
             exit 1
           fi
 
-          echo "Wasmtime Major: $WASM_MAJOR"
-          echo "Crate Major: $CRATE_MAJOR"
+          CRATE_VERSION=$(cargo read-manifest | jq -r .version)
+          echo "Release version: $VERSION"
+          echo "Crate version: $CRATE_VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=v$VERSION" >> $GITHUB_ENV
 
-          if [ "$WASM_MAJOR" != "$CRATE_MAJOR" ]; then
-            TARGET_VERSION="${WASM_MAJOR}.0.0"
-            echo "Syncing major version. Bumping crate to $TARGET_VERSION..."
-            
-            # Update local files
-            cargo set-version "$TARGET_VERSION"
-            cargo check 
-            
-            echo "VERSION=$TARGET_VERSION" >> $GITHUB_ENV
+          if [ "$VERSION" != "$CRATE_VERSION" ]; then
+            echo "Bumping crate to $VERSION..."
+            cargo set-version "$VERSION"
+            cargo check
             echo "should_commit=true" >> $GITHUB_OUTPUT
           else
-            echo "Major versions match. Using current crate version ($CRATE_VERSION)."
-            echo "VERSION=$CRATE_VERSION" >> $GITHUB_ENV
+            echo "Crate version already matches requested version."
             echo "should_commit=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Commit Major Bump
+      - name: Commit Version Bump
         if: steps.bump.outputs.should_commit == 'true'
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "chore: sync major version to ${{ env.VERSION }} to match wasmtime [skip ci]"
+          commit_message: "chore: bump version to ${{ env.VERSION }} [skip ci]"
           commit_user_name: github-actions[bot]
           commit_user_email: github-actions[bot]@users.noreply.github.com
 
       - name: Tag Repository
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Only create the tag if it doesn't already exist
-          if ! git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
-            echo "Creating tag v${{ env.VERSION }}..."
-            git tag "v${{ env.VERSION }}"
-            git push origin "v${{ env.VERSION }}"
+          git fetch --tags origin
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            # Allow re-running a failed publish, but never move an existing tag
+            if [ "$(git rev-list -n 1 "$TAG")" != "$(git rev-parse HEAD)" ]; then
+              echo "Error: Tag $TAG already exists on a different commit."
+              exit 1
+            fi
+            echo "Tag $TAG already exists on HEAD. Proceeding."
           else
-            echo "Tag v${{ env.VERSION }} already exists. Proceeding to publish."
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG"
+            git push origin "refs/tags/$TAG"
           fi
 
       - name: Authenticate with crates.io
@@ -83,3 +85,8 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: cargo publish
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --title "$TAG" --verify-tag --generate-notes
